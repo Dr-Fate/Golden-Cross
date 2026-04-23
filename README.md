@@ -4,9 +4,11 @@ Este proyecto es un simulador de trading y gestión de portafolio basado en la e
 
 ## Características
 
+- **Watchlist Dinámica**: Sistema de seguimiento de activos con persistencia en `watchlist.json`.
+- **Mapeo de Nombres**: Obtención automática del nombre real de la empresa/activo vía Yahoo Finance.
+- **Interfaz Numerada**: Menú interactivo que permite seleccionar activos por su índice.
+- **Estado de Señales**: Reporte instantáneo del estado de compra/venta para el día de hoy en todos los activos de la watchlist.
 - **Análisis Técnico**: Cálculo de Medias Móviles Simples (SMA) de corto y largo plazo.
-- **Detección de Señales**: Identificación automática de *Golden Cross* (señal de compra) y *Death Cross* (señal de venta).
-- **Gestión de Portafolio**: Seguimiento de saldo en efectivo, tenencia de activos y registro de transacciones.
 - **Backtesting**: Simulación de ejecución de trades basada en datos históricos reales.
 - **Visualización**: Gráficos de precios, medias móviles y puntos de ejecución de compra/venta.
 
@@ -23,8 +25,9 @@ Este proyecto es un simulador de trading y gestión de portafolio basado en la e
    ```
 2. Ejecuta el simulador:
    ```bash
-   python simulator.py
+   python3 simulator.py
    ```
+3. Sigue las instrucciones del menú interactivo para agregar acciones, ver señales de hoy o realizar un backtesting detallado.
 
 ## Estrategia Golden Cross
 
