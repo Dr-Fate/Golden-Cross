@@ -190,11 +190,13 @@ def run_scanner(watchlist):
     start_date = end_date - timedelta(days=365)
 
     found_assets = []
+    scanned_successfully = []
 
     for ticker in scanner_list:
         try:
             data, signals, _, _ = run_simulation(ticker, start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d'), silent=True)
             if signals is not None and not signals.empty:
+                name = get_company_name(ticker) or ticker
                 # Buscar señales en los últimos 5 días
                 signals_only = signals[signals['Position'] != 0]
                 recent_signals = signals_only[signals_only.index >= (end_date - timedelta(days=5))]
@@ -204,11 +206,12 @@ def run_scanner(watchlist):
                     days_passed = (datetime.now().date() - last_date.date()).days
 
                     status = "COMPRA" if last_pos == 1.0 else "VENTA"
-                    name = get_company_name(ticker) or ticker
                     print(f"[*] {ticker} ({name}): Señal de {status} detectada hace {days_passed} días.")
 
                     if not any(item['ticker'] == ticker for item in watchlist):
                         found_assets.append({"ticker": ticker, "name": name})
+
+                scanned_successfully.append(f"{ticker} ({name})")
         except Exception as e:
             print(f"[!] Error escaneando {ticker}: {e}")
 
@@ -221,6 +224,8 @@ def run_scanner(watchlist):
             print("Activos agregados con éxito.")
     else:
         print("\nNo se encontraron nuevas señales recientes en los activos escaneados.")
+        if scanned_successfully:
+            print(f"Mercados analizados: {', '.join(scanned_successfully)}")
 
 def main_menu():
     watchlist = load_watchlist()
