@@ -20,12 +20,18 @@ def save_watchlist(watchlist):
         json.dump(watchlist, f, indent=4)
 
 def get_company_name(ticker_symbol):
+    """Obtiene el nombre de la empresa o alias del activo. Retorna None si no se encuentra."""
     try:
         ticker = yf.Ticker(ticker_symbol)
-        name = ticker.info.get('longName')
-        return name if name else ticker_symbol
+        info = ticker.info
+        if not info or 'symbol' not in info:
+            return None
+
+        # Intentar obtener el nombre más descriptivo disponible
+        name = info.get('longName') or info.get('shortName')
+        return name
     except Exception:
-        return ticker_symbol
+        return None
 
 def run_simulation(ticker, start_date, end_date, silent=False):
     if not silent:
@@ -183,7 +189,10 @@ def main_menu():
 
         elif choice == '2':
             if display_watchlist(watchlist):
-                idx = input("\nIngrese el número del activo para analizar (o ticker): ")
+                idx = input("\nIngrese el número del activo para analizar (o '0' para volver): ")
+                if idx == '0' or not idx:
+                    continue
+
                 ticker_to_run = ""
                 name_to_run = ""
 
@@ -204,19 +213,28 @@ def main_menu():
                     plot_results(data, signals, ticker_to_run, name_to_run)
 
         elif choice == '3':
-            new_ticker = input("\nIngrese el ticker del nuevo activo: ").upper()
+            new_ticker = input("\nIngrese el ticker del nuevo activo (o Intro para volver): ").upper()
+            if not new_ticker:
+                continue
+
             if any(item['ticker'] == new_ticker for item in watchlist):
                 print(f"{new_ticker} ya está en la watchlist.")
             else:
-                print(f"Buscando nombre para {new_ticker}...")
+                print(f"Verificando {new_ticker} en Yahoo Finance...")
                 name = get_company_name(new_ticker)
-                watchlist.append({"ticker": new_ticker, "name": name})
-                save_watchlist(watchlist)
-                print(f"Agregado: {new_ticker} - {name}")
+                if name:
+                    watchlist.append({"ticker": new_ticker, "name": name})
+                    save_watchlist(watchlist)
+                    print(f"Agregado con éxito: {new_ticker} - {name}")
+                else:
+                    print(f"Error: No se pudo encontrar el activo '{new_ticker}'. Verifique el ticker e intente de nuevo.")
 
         elif choice == '4':
             if display_watchlist(watchlist):
-                idx = input("\nIngrese el número del activo a eliminar: ")
+                idx = input("\nIngrese el número del activo a eliminar (o '0' para volver): ")
+                if idx == '0' or not idx:
+                    continue
+
                 if idx.isdigit():
                     i = int(idx) - 1
                     if 0 <= i < len(watchlist):
