@@ -43,6 +43,8 @@ def run_simulation(ticker, start_date, end_date, silent=False):
     signals = generate_signals(data)
     portfolio = Portfolio(initial_cash=10000.0)
     portfolio_values = []
+    peak_value = portfolio.initial_cash
+    max_drawdown = 0.0
 
     for i in range(len(data)):
         current_date = data.index[i]
@@ -57,6 +59,14 @@ def run_simulation(ticker, start_date, end_date, silent=False):
         total_val = portfolio.update_value(current_price)
         portfolio_values.append(float(total_val))
 
+        # Calcular Drawdown
+        if total_val > peak_value:
+            peak_value = total_val
+
+        drawdown = (total_val - peak_value) / peak_value
+        if drawdown < max_drawdown:
+            max_drawdown = drawdown
+
     data['Portfolio_Value'] = portfolio_values
 
     if not silent:
@@ -64,9 +74,10 @@ def run_simulation(ticker, start_date, end_date, silent=False):
         print(f"Saldo Inicial: ${portfolio.initial_cash:,.2f}")
         print(f"Saldo Final: ${portfolio.total_value:,.2f}")
         print(f"Rendimiento Total: {((portfolio.total_value / portfolio.initial_cash) - 1) * 100:.2f}%")
+        print(f"Máximo Drawdown: {max_drawdown * 100:.2f}%")
         print(f"Número de operaciones: {len(portfolio.history)}")
 
-    return data, signals, portfolio
+    return data, signals, portfolio, max_drawdown
 
 def plot_results(data, signals, ticker, company_name):
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10), sharex=True)
@@ -99,6 +110,7 @@ def plot_results(data, signals, ticker, company_name):
     filename = f'resultados_{ticker}.png'
     plt.savefig(filename)
     print(f"\nGráfico guardado como '{filename}'")
+    plt.show()
 
 def display_watchlist(watchlist):
     if not watchlist:
@@ -122,7 +134,7 @@ def show_current_signals(watchlist):
     for item in watchlist:
         ticker = item['ticker']
         # Usar silent=True para no llenar la consola de logs de descarga
-        data, signals, _ = run_simulation(ticker, start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d'), silent=True)
+        data, signals, _, _ = run_simulation(ticker, start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d'), silent=True)
 
         if signals is not None and not signals.empty:
             last_signal = signals['Signal'].iloc[-1]
@@ -179,7 +191,7 @@ def main_menu():
                     ticker_to_run = idx.upper()
                     name_to_run = get_company_name(ticker_to_run)
 
-                data, signals, portfolio = run_simulation(ticker_to_run, "2020-01-01", datetime.now().strftime('%Y-%m-%d'))
+                data, signals, portfolio, _ = run_simulation(ticker_to_run, "2020-01-01", datetime.now().strftime('%Y-%m-%d'))
                 if data is not None:
                     plot_results(data, signals, ticker_to_run, name_to_run)
 
