@@ -43,12 +43,18 @@ def get_company_name(ticker_symbol):
 def run_simulation(ticker, start_date, end_date, silent=False):
     if not silent:
         print(f"Descargando datos para {ticker} desde {start_date} hasta {end_date}...")
-    data = yf.download(ticker, start=start_date, end=end_date, progress=False)
 
-    if data.empty:
+    try:
+        data = yf.download(ticker, start=start_date, end=end_date, progress=False)
+    except Exception as e:
         if not silent:
-            print("No se encontraron datos.")
-        return None, None, None
+            print(f"Error al descargar datos para {ticker}: {e}")
+        return None, None, None, 0.0
+
+    if data is None or data.empty:
+        if not silent:
+            print(f"No se encontraron datos para {ticker}.")
+        return None, None, None, 0.0
 
     if isinstance(data.columns, pd.MultiIndex):
         data.columns = data.columns.get_level_values(0)
@@ -147,9 +153,9 @@ def show_current_signals(watchlist):
     for item in watchlist:
         ticker = item['ticker']
         # Usar silent=True para no llenar la consola de logs de descarga
-        data, signals, _, _ = run_simulation(ticker, start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d'), silent=True)
+        _, signals, _, _ = run_simulation(ticker, start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d'), silent=True)
 
-        if signals is not None and not signals.empty:
+        if signals is not None and len(signals) > 0:
             last_signal = signals['Signal'].iloc[-1]
             last_pos = signals['Position'].iloc[-1]
 
@@ -194,8 +200,8 @@ def run_scanner(watchlist):
 
     for ticker in scanner_list:
         try:
-            data, signals, _, _ = run_simulation(ticker, start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d'), silent=True)
-            if signals is not None and not signals.empty:
+            _, signals, _, _ = run_simulation(ticker, start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d'), silent=True)
+            if signals is not None and len(signals) > 0:
                 name = get_company_name(ticker) or ticker
                 # Buscar señales en los últimos 5 días
                 signals_only = signals[signals['Position'] != 0]
@@ -253,9 +259,6 @@ def main_menu():
                 if idx == '0' or not idx:
                     continue
 
-                ticker_to_run = ""
-                name_to_run = ""
-
                 if idx.isdigit():
                     i = int(idx) - 1
                     if 0 <= i < len(watchlist):
@@ -266,11 +269,13 @@ def main_menu():
                         continue
                 else:
                     ticker_to_run = idx.upper()
-                    name_to_run = get_company_name(ticker_to_run)
+                    name_to_run = get_company_name(ticker_to_run) or ticker_to_run
 
-                data, signals, portfolio, _ = run_simulation(ticker_to_run, "2020-01-01", datetime.now().strftime('%Y-%m-%d'))
-                if data is not None:
-                    plot_results(data, signals, ticker_to_run, name_to_run)
+                sim_data, sim_signals, sim_portfolio, _ = run_simulation(
+                    ticker_to_run, "2020-01-01", datetime.now().strftime('%Y-%m-%d')
+                )
+                if sim_data is not None and sim_signals is not None:
+                    plot_results(sim_data, sim_signals, ticker_to_run, name_to_run)
 
         elif choice == '3':
             new_ticker = input("\nIngrese el ticker del nuevo activo (o Intro para volver): ").upper()
