@@ -8,6 +8,13 @@ from analysis import generate_signals
 from portfolio import Portfolio
 
 WATCHLIST_FILE = "watchlist.json"
+CONFIG_FILE = "config.json"
+
+def load_config():
+    if os.path.exists(CONFIG_FILE):
+        with open(CONFIG_FILE, "r") as f:
+            return json.load(f)
+    return {"SCANNER_LIST": []}
 
 def load_watchlist():
     if os.path.exists(WATCHLIST_FILE):
@@ -149,10 +156,13 @@ def show_current_signals(watchlist):
             # Buscar cuándo fue la última señal (Position != 0)
             signal_dates = signals[signals['Position'] != 0].index
             days_msg = ""
+            warning = ""
             if not signal_dates.empty:
                 last_signal_date = signal_dates[-1]
                 days_passed = (datetime.now().date() - last_signal_date.date()).days
                 days_msg = f" - Señal original hace {days_passed} días."
+                if days_passed > 10:
+                    warning = " (Fuera de margen ideal)"
 
             status = "NEUTRAL"
             if last_pos == 1.0:
@@ -164,9 +174,53 @@ def show_current_signals(watchlist):
             else:
                 status = "FUERA DEL MERCADO (Tendencia Bajista)"
 
-            print(f"{ticker} ({item['name']}): {status}{days_msg}")
+            print(f"{ticker} ({item['name']}): {status}{days_msg}{warning}")
         else:
             print(f"{ticker} ({item['name']}): Error al obtener datos")
+
+def run_scanner(watchlist):
+    config = load_config()
+    scanner_list = config.get("SCANNER_LIST", [])
+    if not scanner_list:
+        print("\nNo hay activos configurados para escanear.")
+        return
+
+    print(f"\n--- Escaneando Mercado ({len(scanner_list)} activos) ---")
+    end_date = datetime.now()
+    start_date = end_date - timedelta(days=365)
+
+    found_assets = []
+
+    for ticker in scanner_list:
+        try:
+            data, signals, _, _ = run_simulation(ticker, start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d'), silent=True)
+            if signals is not None and not signals.empty:
+                # Buscar señales en los últimos 5 días
+                signals_only = signals[signals['Position'] != 0]
+                recent_signals = signals_only[signals_only.index >= (end_date - timedelta(days=5))]
+                if not recent_signals.empty:
+                    last_pos = recent_signals['Position'].iloc[-1]
+                    last_date = recent_signals.index[-1]
+                    days_passed = (datetime.now().date() - last_date.date()).days
+
+                    status = "COMPRA" if last_pos == 1.0 else "VENTA"
+                    name = get_company_name(ticker) or ticker
+                    print(f"[*] {ticker} ({name}): Señal de {status} detectada hace {days_passed} días.")
+
+                    if not any(item['ticker'] == ticker for item in watchlist):
+                        found_assets.append({"ticker": ticker, "name": name})
+        except Exception as e:
+            print(f"[!] Error escaneando {ticker}: {e}")
+
+    if found_assets:
+        print(f"\nSe encontraron {len(found_assets)} activos con señales recientes que NO están en tu watchlist.")
+        ans = input("¿Deseas agregarlos todos a tu watchlist permanente? (s/n): ").lower()
+        if ans == 's':
+            watchlist.extend(found_assets)
+            save_watchlist(watchlist)
+            print("Activos agregados con éxito.")
+    else:
+        print("\nNo se encontraron nuevas señales recientes en los activos escaneados.")
 
 def main_menu():
     watchlist = load_watchlist()
@@ -179,7 +233,8 @@ def main_menu():
         print("2. Analizar Activo (Backtesting)")
         print("3. [+] Agregar acción")
         print("4. [-] Eliminar acción")
-        print("5. Salir")
+        print("5. Escanear Mercado (Radar)")
+        print("6. Salir")
 
         choice = input("\nSeleccione una opción: ")
 
@@ -247,6 +302,9 @@ def main_menu():
                     print("Por favor, ingrese un número válido.")
 
         elif choice == '5':
+            run_scanner(watchlist)
+
+        elif choice == '6':
             print("Saliendo...")
             break
         else:
