@@ -140,6 +140,14 @@ def show_current_signals(watchlist):
             last_signal = signals['Signal'].iloc[-1]
             last_pos = signals['Position'].iloc[-1]
 
+            # Buscar cuándo fue la última señal (Position != 0)
+            signal_dates = signals[signals['Position'] != 0].index
+            days_msg = ""
+            if not signal_dates.empty:
+                last_signal_date = signal_dates[-1]
+                days_passed = (datetime.now().date() - last_signal_date.date()).days
+                days_msg = f" - Señal original hace {days_passed} días."
+
             status = "NEUTRAL"
             if last_pos == 1.0:
                 status = "¡SEÑAL DE COMPRA HOY! (Golden Cross)"
@@ -150,7 +158,7 @@ def show_current_signals(watchlist):
             else:
                 status = "FUERA DEL MERCADO (Tendencia Bajista)"
 
-            print(f"{ticker} ({item['name']}): {status}")
+            print(f"{ticker} ({item['name']}): {status}{days_msg}")
         else:
             print(f"{ticker} ({item['name']}): Error al obtener datos")
 
