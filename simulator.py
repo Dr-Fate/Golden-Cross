@@ -190,12 +190,7 @@ def show_current_signals(watchlist):
             else:
                 status = "FUERA DEL MERCADO (Tendencia Bajista)"
 
-            # Alerta de Drawdown
-            mdd_alert = ""
-            if mdd < -0.10: # Más del 10% de caída
-                mdd_alert = " ⚠️ Alerta: Drawdown elevado"
-
-            print(f"{ticker} ({item['name']}): {status}{days_msg}{warning}{mdd_alert}")
+            print(f"{ticker} ({item['name']}): {status}{days_msg}{warning}")
         else:
             print(f"{ticker} ({item['name']}): Error al obtener datos")
 
