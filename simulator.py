@@ -103,7 +103,7 @@ def plot_results(data, signals, ticker, company_name):
 
     ax1.plot(data.index, data['Close'], label='Precio de Cierre', alpha=0.5)
     ax1.plot(signals.index, signals['SMA_Short'], label='SMA 50 (Corta)', alpha=0.8)
-    ax1.plot(signals.index, signals['SMA_Long'], label='SMA 200 (Larga)', alpha=0.8)
+    ax1.plot(signals.index, signals['SMA_Long'], label='SMA 200 (Larga)', color='darkgreen', alpha=0.8)
 
     ax1.plot(signals.loc[signals.Position == 1.0].index,
              signals.SMA_Short[signals.Position == 1.0],
@@ -117,6 +117,11 @@ def plot_results(data, signals, ticker, company_name):
     ax1.set_ylabel('Precio ($)')
     ax1.legend()
     ax1.grid()
+
+    # Ajustar margen derecho para ver marcadores de hoy
+    if len(data) > 0:
+        xlim_left, xlim_right = ax1.get_xlim()
+        ax1.set_xlim(xlim_left, xlim_right + (xlim_right - xlim_left) * 0.05)
 
     ax2.plot(data.index, data['Portfolio_Value'], label='Valor del Portafolio', color='orange')
     ax2.set_title('Evolución del Valor del Portafolio')
@@ -153,7 +158,7 @@ def show_current_signals(watchlist):
     for item in watchlist:
         ticker = item['ticker']
         # Usar silent=True para no llenar la consola de logs de descarga
-        _, signals, _, _ = run_simulation(ticker, start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d'), silent=True)
+        _, signals, _, mdd = run_simulation(ticker, start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d'), silent=True)
 
         if signals is not None and len(signals) > 0:
             last_signal = signals['Signal'].iloc[-1]
@@ -174,13 +179,23 @@ def show_current_signals(watchlist):
             if last_pos == 1.0:
                 status = "¡SEÑAL DE COMPRA HOY! (Golden Cross)"
             elif last_pos == -1.0:
+                # Si last_signal es 0 ahora, significa que antes era 1. Pero si no tenemos acciones...
+                # La lógica de compra/venta es binaria aquí.
+                # Si la señal previa era 1 y ahora es 0, es venta.
                 status = "¡SEÑAL DE VENTA HOY! (Death Cross)"
+                if signals['Signal'].iloc[-2] == 0: # Caso borde: no veníamos de compra
+                     status = "MANTENERSE FUERA (Confirmación de tendencia bajista)"
             elif last_signal == 1.0:
                 status = "MANTENER (Tendencia Alcista)"
             else:
                 status = "FUERA DEL MERCADO (Tendencia Bajista)"
 
-            print(f"{ticker} ({item['name']}): {status}{days_msg}{warning}")
+            # Alerta de Drawdown
+            mdd_alert = ""
+            if mdd < -0.10: # Más del 10% de caída
+                mdd_alert = " ⚠️ Alerta: Drawdown elevado"
+
+            print(f"{ticker} ({item['name']}): {status}{days_msg}{warning}{mdd_alert}")
         else:
             print(f"{ticker} ({item['name']}): Error al obtener datos")
 

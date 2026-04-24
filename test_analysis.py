@@ -18,16 +18,17 @@ class TestAnalysis(unittest.TestCase):
 
     def test_generate_signals(self):
         # Con precios crecientes, SMA_Short (50) siempre será mayor que SMA_Long (200)
-        # después de que ambas se calculen.
+        # después de que ambas se calculen y se supere el umbral del 0.1%.
         signals = generate_signals(self.data, short_window=50, long_window=200)
 
-        # En el día 200 (índice 199), la SMA_Short es la media de 150..199
-        # La SMA_Long es la media de 0..199
-        # Por lo tanto SMA_Short > SMA_Long
-        self.assertEqual(signals['Signal'].iloc[199], 1.0)
+        # En el índice 199, la SMA_Short (174.5) es mayor que la SMA_Long (99.5)
+        # La diferencia es 75, que es mayor que el umbral (199 * 0.001 = 0.199)
+        # Debido a la nueva lógica de bucle, el primer día de SMA_Long es el 199.
+        self.assertEqual(signals['Signal'].iloc[199], 0.0) # Primer día inicializa
+        self.assertEqual(signals['Signal'].iloc[200], 1.0)
 
-        # El primer cruce (Position == 1) debería ocurrir en el índice 199 (primer día con SMA_Long)
-        self.assertEqual(signals['Position'].iloc[199], 1.0)
+        # El primer cruce (Position == 1) ocurre después del primer día de cálculo
+        self.assertEqual(signals['Position'].iloc[200], 1.0)
 
 if __name__ == '__main__':
     unittest.main()
