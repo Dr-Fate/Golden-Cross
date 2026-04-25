@@ -40,6 +40,13 @@ def get_company_name(ticker_symbol):
     except Exception:
         return None
 
+def calculate_cagr(total_return, start_date, end_date):
+    """Calcula la Tasa de Crecimiento Anual Compuesta (CAGR)."""
+    years = (end_date - start_date).days / 365.25
+    if years <= 0:
+        return 0
+    return (abs(total_return + 1) ** (1 / years)) - 1
+
 def run_simulation(ticker, start_date, end_date, silent=False):
     if not silent:
         print(f"Descargando datos para {ticker} desde {start_date} hasta {end_date}...")
@@ -59,6 +66,7 @@ def run_simulation(ticker, start_date, end_date, silent=False):
     if isinstance(data.columns, pd.MultiIndex):
         data.columns = data.columns.get_level_values(0)
 
+    # --- ESTRATEGIA GOLDEN CROSS ---
     signals = generate_signals(data)
     portfolio = Portfolio(initial_cash=10000.0)
     portfolio_values = []
@@ -78,23 +86,59 @@ def run_simulation(ticker, start_date, end_date, silent=False):
         total_val = portfolio.update_value(current_price)
         portfolio_values.append(float(total_val))
 
-        # Calcular Drawdown
         if total_val > peak_value:
             peak_value = total_val
-
         drawdown = (total_val - peak_value) / peak_value
         if drawdown < max_drawdown:
             max_drawdown = drawdown
 
     data['Portfolio_Value'] = portfolio_values
 
+    # --- BENCHMARK BUY & HOLD ---
+    bh_portfolio = Portfolio(initial_cash=10000.0)
+    bh_values = []
+    # Compra al inicio
+    bh_portfolio.buy(data.index[0], float(data['Close'].iloc[0]))
+    bh_peak = bh_portfolio.initial_cash
+    bh_max_drawdown = 0.0
+
+    for i in range(len(data)):
+        price = float(data['Close'].iloc[i])
+        val = bh_portfolio.update_value(price)
+        bh_values.append(float(val))
+        if val > bh_peak:
+            bh_peak = val
+        dd = (val - bh_peak) / bh_peak
+        if dd < bh_max_drawdown:
+            bh_max_drawdown = dd
+
+    data['Buy_Hold_Value'] = bh_values
+
+    # Cálculos finales
+    years = (data.index[-1] - data.index[0]).days / 365.25
+    total_return = (portfolio.total_value / portfolio.initial_cash) - 1
+    cagr = calculate_cagr(total_return, data.index[0], data.index[-1])
+
+    bh_total_return = (bh_portfolio.total_value / bh_portfolio.initial_cash) - 1
+    bh_cagr = calculate_cagr(bh_total_return, data.index[0], data.index[-1])
+
     if not silent:
-        print("\nResumen de Simulación:")
-        print(f"Saldo Inicial: ${portfolio.initial_cash:,.2f}")
-        print(f"Saldo Final: ${portfolio.total_value:,.2f}")
-        print(f"Rendimiento Total: {((portfolio.total_value / portfolio.initial_cash) - 1) * 100:.2f}%")
-        print(f"Máximo Drawdown: {max_drawdown * 100:.2f}%")
-        print(f"Número de operaciones: {len(portfolio.history)}")
+        print("\n" + "="*40)
+        print(f" RESUMEN DE SIMULACIÓN: {ticker}")
+        print("="*40)
+        print(f"{'Métrica':<20} | {'Estrategia':<10} | {'Buy & Hold':<10}")
+        print("-" * 45)
+        print(f"{'Retorno Total':<20} | {total_return*100:>9.2f}% | {bh_total_return*100:>9.2f}%")
+        print(f"{'CAGR':<20} | {cagr*100:>9.2f}% | {bh_cagr*100:>9.2f}%")
+        print(f"{'Máximo Drawdown':<20} | {max_drawdown*100:>9.2f}% | {bh_max_drawdown*100:>9.2f}%")
+        print(f"{'Operaciones':<20} | {len(portfolio.history):>10} | {len(bh_portfolio.history):>10}")
+        print("="*40)
+
+        # Logging de trades
+        if len(portfolio.history) > 0:
+            print("\nRegistro de Operaciones (Estrategia):")
+            for h in portfolio.history:
+                print(f"- {h['Date'].date()} {h['Type']:>4}: ${h['Price']:>8.2f} | Comis: ${h['Commission']:>6.2f} | Saldo: ${h['Cash']:>10.2f}")
 
     return data, signals, portfolio, max_drawdown
 
@@ -123,8 +167,9 @@ def plot_results(data, signals, ticker, company_name):
         xlim_left, xlim_right = ax1.get_xlim()
         ax1.set_xlim(xlim_left, xlim_right + (xlim_right - xlim_left) * 0.05)
 
-    ax2.plot(data.index, data['Portfolio_Value'], label='Valor del Portafolio', color='orange')
-    ax2.set_title('Evolución del Valor del Portafolio')
+    ax2.plot(data.index, data['Portfolio_Value'], label='Estrategia Golden Cross', color='orange', linewidth=2)
+    ax2.plot(data.index, data['Buy_Hold_Value'], label='Buy & Hold', color='gray', linestyle='--', alpha=0.7)
+    ax2.set_title('Curva de Equity: Estrategia vs Buy & Hold')
     ax2.set_ylabel('Valor Total ($)')
     ax2.set_xlabel('Fecha')
     ax2.legend()

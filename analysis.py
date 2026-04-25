@@ -31,7 +31,7 @@ def generate_signals(data, short_window=50, long_window=200):
         sma_short = signals['SMA_Short'].iloc[i]
         sma_long = signals['SMA_Long'].iloc[i]
         price = data['Close'].iloc[i]
-        threshold = price * 0.001 # 0.1% del precio
+        threshold = price * 0.005 # 0.5% del precio (Baja Frecuencia)
 
         if sma_short > (sma_long + threshold):
             current_signal = 1.0

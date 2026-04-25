@@ -7,29 +7,49 @@ class Portfolio:
         self.total_value = initial_cash
         self.history = []
 
-    def buy(self, date, price, quantity=None):
-        """Compra activos con el efectivo disponible o una cantidad específica."""
-        if quantity is None:
-            quantity = self.cash // price
+    def calculate_commission(self, trade_value):
+        """Calcula la comisión: 0.75% con un mínimo de $10."""
+        return max(0.0075 * trade_value, 10.0)
 
-        cost = quantity * price
-        if cost <= self.cash and quantity > 0:
-            self.cash -= cost
+    def buy(self, date, price, quantity=None):
+        """Compra activos considerando comisiones."""
+        if quantity is None:
+            # Reservar efectivo para la comisión mínima aproximada
+            available_cash = self.cash - 10.0
+            if available_cash < 0:
+                return False
+            quantity = available_cash // (price * 1.0075)
+
+        trade_value = quantity * price
+        commission = self.calculate_commission(trade_value)
+        total_cost = trade_value + commission
+
+        if total_cost <= self.cash and quantity > 0:
+            self.cash -= total_cost
             self.holdings += quantity
-            self.history.append({'Date': date, 'Type': 'BUY', 'Price': price, 'Quantity': quantity, 'Cash': self.cash})
+            self.history.append({
+                'Date': date, 'Type': 'BUY', 'Price': price,
+                'Quantity': quantity, 'Commission': commission, 'Cash': self.cash
+            })
             return True
         return False
 
     def sell(self, date, price, quantity=None):
-        """Vende los activos en cartera."""
+        """Vende los activos considerando comisiones."""
         if quantity is None:
             quantity = self.holdings
 
         if quantity > 0 and quantity <= self.holdings:
-            revenue = quantity * price
-            self.cash += revenue
+            trade_value = quantity * price
+            commission = self.calculate_commission(trade_value)
+            net_revenue = trade_value - commission
+
+            self.cash += net_revenue
             self.holdings -= quantity
-            self.history.append({'Date': date, 'Type': 'SELL', 'Price': price, 'Quantity': quantity, 'Cash': self.cash})
+            self.history.append({
+                'Date': date, 'Type': 'SELL', 'Price': price,
+                'Quantity': quantity, 'Commission': commission, 'Cash': self.cash
+            })
             return True
         return False
 
