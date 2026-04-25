@@ -1,3 +1,17 @@
 {
-    "SCANNER_LIST": ["AAPL", "MSFT", "NVDA", "GOOGL", "VOO", "QQQ", "GLD", "CL=F", "BTC-USD", "XLF", "XLE", "IWM", "SMH"]
+    "SCANNER_LIST": [
+        "AAPL",
+        "MSFT",
+        "NVDA",
+        "GOOGL",
+        "VUSA.L",
+        "EQQQ.L",
+        "SGLN.L",
+        "CL=F",
+        "BTC-USD",
+        "IUFS.L",
+        "IUES.L",
+        "CU2.L",
+        "SMH.L"
+    ]
 }
