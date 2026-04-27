@@ -47,7 +47,7 @@ def calculate_cagr(total_return, start_date, end_date):
         return 0
     return (abs(total_return + 1) ** (1 / years)) - 1
 
-def run_simulation(ticker, start_date, end_date, silent=False):
+def run_simulation(ticker, start_date, end_date, initial_capital=10000.0, silent=False):
     if not silent:
         print(f"Descargando datos para {ticker} desde {start_date} hasta {end_date}...")
 
@@ -68,7 +68,7 @@ def run_simulation(ticker, start_date, end_date, silent=False):
 
     # --- ESTRATEGIA GOLDEN CROSS ---
     signals = generate_signals(data)
-    portfolio = Portfolio(initial_cash=10000.0)
+    portfolio = Portfolio(initial_cash=initial_capital)
     portfolio_values = []
     peak_value = portfolio.initial_cash
     max_drawdown = 0.0
@@ -95,7 +95,7 @@ def run_simulation(ticker, start_date, end_date, silent=False):
     data['Portfolio_Value'] = portfolio_values
 
     # --- BENCHMARK BUY & HOLD ---
-    bh_portfolio = Portfolio(initial_cash=10000.0)
+    bh_portfolio = Portfolio(initial_cash=initial_capital)
     bh_values = []
     # Compra al inicio
     bh_portfolio.buy(data.index[0], float(data['Close'].iloc[0]))
@@ -132,6 +132,10 @@ def run_simulation(ticker, start_date, end_date, silent=False):
         print(f"{'CAGR':<20} | {cagr*100:>9.2f}% | {bh_cagr*100:>9.2f}%")
         print(f"{'Máximo Drawdown':<20} | {max_drawdown*100:>9.2f}% | {bh_max_drawdown*100:>9.2f}%")
         print(f"{'Operaciones':<20} | {len(portfolio.history):>10} | {len(bh_portfolio.history):>10}")
+        print("="*40)
+        print(f"\nRESULTADOS FINALES ({years:.1f} años):")
+        print(f"- Con estrategia el monto final es de: ${portfolio.total_value:,.2f}")
+        print(f"- Haciendo Buy & Hold el monto final es de: ${bh_portfolio.total_value:,.2f}")
         print("="*40)
 
         # Logging de trades
@@ -326,8 +330,11 @@ def main_menu():
                     ticker_to_run = idx.upper()
                     name_to_run = get_company_name(ticker_to_run) or ticker_to_run
 
+                cap_input = input("Ingrese el capital inicial para la simulación (ej: 10000): ")
+                initial_cap = float(cap_input) if cap_input.replace('.', '', 1).isdigit() else 10000.0
+
                 sim_data, sim_signals, sim_portfolio, _ = run_simulation(
-                    ticker_to_run, "2020-01-01", datetime.now().strftime('%Y-%m-%d')
+                    ticker_to_run, "2020-01-01", datetime.now().strftime('%Y-%m-%d'), initial_capital=initial_cap
                 )
                 if sim_data is not None and sim_signals is not None:
                     plot_results(sim_data, sim_signals, ticker_to_run, name_to_run)
