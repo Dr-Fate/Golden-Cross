@@ -123,8 +123,10 @@ def run_simulation(ticker, start_date, end_date, initial_capital=10000.0, silent
     bh_cagr = calculate_cagr(bh_total_return, data.index[0], data.index[-1])
 
     if not silent:
+        current_price = float(data['Close'].iloc[-1])
         print("\n" + "="*40)
         print(f" RESUMEN DE SIMULACIÓN: {ticker}")
+        print(f" Precio actual: ${current_price:,.2f}")
         print("="*40)
         print(f"{'Métrica':<20} | {'Estrategia':<10} | {'Buy & Hold':<10}")
         print("-" * 45)
